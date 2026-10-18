@@ -1,0 +1,14 @@
+{
+  "name": "pdfswift",
+  "version": "1.0.0",
+  "description": "PDFSwift - 100% Free Online PDF Tools Suite",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install",
+    "start": "node backend/src/server.js",
+    "test": "node backend/src/test_free_suite.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
