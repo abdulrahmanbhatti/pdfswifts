@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import AdSenseSlot from '../components/AdSenseSlot';
 import { useSEO } from '../hooks/useSEO';
-import { API_BASE, BACKEND_URL } from '../api/config';
+import { compressPDFClient } from '../services/clientPdfService';
 
 export default function CompressPdf() {
   useSEO(
@@ -81,36 +81,12 @@ export default function CompressPdf() {
       return;
     }
 
-    setIsProcessing(true);
-    setProgress(30);
-
-    try {
-      const formData = new FormData();
-      formData.append('files', selectedFile);
-
-      setProgress(60);
-      const res = await axios.post(`${API_BASE}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      const uploaded = res.data.files[0];
-      setFile({
-        raw: selectedFile,
-        name: uploaded.originalName,
-        size: uploaded.size,
-        fileId: uploaded.fileId,
-      });
-
-      setProgress(100);
-      setTimeout(() => {
-        setIsProcessing(false);
-        setStep(2);
-      }, 200);
-    } catch (err) {
-      console.error(err);
-      setIsProcessing(false);
-      setError(err.response?.data?.error || 'Failed to upload and analyze PDF file.');
-    }
+    setFile({
+      raw: selectedFile,
+      name: selectedFile.name,
+      size: selectedFile.size,
+    });
+    setStep(2);
   };
 
   const handleCompress = async () => {
@@ -118,26 +94,23 @@ export default function CompressPdf() {
 
     setError(null);
     setIsProcessing(true);
-    setProgress(20);
+    setProgress(30);
 
     try {
-      setProgress(55);
-      const res = await axios.post(`${API_BASE}/compress`, {
-        fileId: file.fileId,
-        quality,
-      });
-
+      setProgress(70);
+      const res = await compressPDFClient(file.raw, quality);
       setProgress(100);
+
       setTimeout(() => {
         setIsProcessing(false);
-        setResult(res.data);
+        setResult(res);
         setStep(3);
       }, 300);
     } catch (err) {
       console.error(err);
       setIsProcessing(false);
       setProgress(0);
-      setError(err.response?.data?.error || 'Failed to compress PDF. Please try again.');
+      setError(err.message || 'Failed to compress PDF. Please try again.');
     }
   };
 
@@ -481,7 +454,7 @@ export default function CompressPdf() {
 
             <div className="space-y-3">
               <a
-                href={`${BACKEND_URL}${result.downloadUrl}`}
+                href={result.downloadUrl}
                 download={result.filename}
                 className="inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-lg text-base font-bold bg-indigo-600 text-white hover:bg-indigo-700 btn-lift shadow-sm transition"
               >

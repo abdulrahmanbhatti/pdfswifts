@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import AdSenseSlot from '../components/AdSenseSlot';
 import { useSEO } from '../hooks/useSEO';
-import { API_BASE, BACKEND_URL } from '../api/config';
+import { getPDFInfoClient, splitPDFClient } from '../services/clientPdfService';
 
 export default function SplitPdf() {
   useSEO(
@@ -61,26 +61,17 @@ export default function SplitPdf() {
     setProgress(30);
 
     try {
-      const formData = new FormData();
-      formData.append('files', selectedFile);
-
-      setProgress(60);
-      const res = await axios.post(`${API_BASE}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      const uploaded = res.data.files[0];
+      const info = await getPDFInfoClient(selectedFile);
       setFile({
         raw: selectedFile,
-        name: uploaded.originalName,
-        size: uploaded.size,
-        pageCount: uploaded.pageCount || 1,
-        fileId: uploaded.fileId,
+        name: selectedFile.name,
+        size: selectedFile.size,
+        pageCount: info.pageCount || 1,
       });
 
-      // Default range to all pages or first page
-      setPageRange(`1-${uploaded.pageCount || 1}`);
-      const initialPages = Array.from({ length: uploaded.pageCount || 1 }, (_, i) => i + 1);
+      // Default range to all pages
+      setPageRange(`1-${info.pageCount || 1}`);
+      const initialPages = Array.from({ length: info.pageCount || 1 }, (_, i) => i + 1);
       setSelectedPages(initialPages);
 
       setProgress(100);
@@ -91,7 +82,7 @@ export default function SplitPdf() {
     } catch (err) {
       console.error(err);
       setIsProcessing(false);
-      setError(err.response?.data?.error || 'Failed to upload and analyze PDF file.');
+      setError(err.message || 'Failed to inspect PDF file.');
     }
   };
 
@@ -175,26 +166,23 @@ export default function SplitPdf() {
 
     setError(null);
     setIsProcessing(true);
-    setProgress(20);
+    setProgress(30);
 
     try {
-      setProgress(50);
-      const res = await axios.post(`${API_BASE}/split`, {
-        fileId: file.fileId,
-        pages: pageRange.trim(),
-      });
-
+      setProgress(70);
+      const res = await splitPDFClient(file.raw, pageRange.trim());
       setProgress(100);
+
       setTimeout(() => {
         setIsProcessing(false);
-        setResult(res.data);
+        setResult(res);
         setStep(3);
       }, 300);
     } catch (err) {
       console.error(err);
       setIsProcessing(false);
       setProgress(0);
-      setError(err.response?.data?.error || 'Failed to split PDF. Please check your page ranges.');
+      setError(err.message || 'Failed to split PDF. Please check your page ranges.');
     }
   };
 
@@ -528,7 +516,7 @@ export default function SplitPdf() {
 
             <div className="space-y-3">
               <a
-                href={`${BACKEND_URL}${result.downloadUrl}`}
+                href={result.downloadUrl}
                 download={result.filename}
                 className="inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-lg text-base font-bold bg-indigo-600 text-white hover:bg-indigo-700 btn-lift shadow-sm transition"
               >

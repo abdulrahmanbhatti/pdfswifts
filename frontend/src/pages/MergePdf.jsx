@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import AdSenseSlot from '../components/AdSenseSlot';
 import { useSEO } from '../hooks/useSEO';
-import { API_BASE, BACKEND_URL } from '../api/config';
+import { mergePDFsClient } from '../services/clientPdfService';
 
 export default function MergePdf() {
   useSEO(
@@ -129,41 +129,16 @@ export default function MergePdf() {
 
     setError(null);
     setIsProcessing(true);
-    setProgress(15);
+    setProgress(30);
 
     try {
-      // 1. Upload files
-      const formData = new FormData();
-      files.forEach((item) => {
-        formData.append('files', item.file);
-      });
-
-      setProgress(40);
-      const uploadRes = await axios.post(`${API_BASE}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const pct = Math.round((progressEvent.loaded * 50) / progressEvent.total);
-            setProgress(Math.max(20, pct));
-          }
-        },
-      });
-
-      const uploadedFiles = uploadRes.data.files;
-      const fileIds = uploadedFiles.map((f) => f.fileId);
-
-      setProgress(75);
-
-      // 2. Call Merge API
-      const mergeRes = await axios.post(`${API_BASE}/merge`, {
-        fileIds,
-        order: files.map((_, idx) => idx), // Order corresponds to our reordered list
-      });
-
+      setProgress(60);
+      const mergeRes = await mergePDFsClient(files);
       setProgress(100);
+
       setTimeout(() => {
         setIsProcessing(false);
-        setResult(mergeRes.data);
+        setResult(mergeRes);
         setStep(3);
       }, 300);
     } catch (err) {
@@ -171,8 +146,7 @@ export default function MergePdf() {
       setIsProcessing(false);
       setProgress(0);
       setError(
-        err.response?.data?.error ||
-          'Failed to merge documents. Please check your files and try again.'
+        err.message || 'Failed to merge documents. Please check your files and try again.'
       );
     }
   };
@@ -474,7 +448,7 @@ export default function MergePdf() {
 
             <div className="space-y-3">
               <a
-                href={`${BACKEND_URL}${result.downloadUrl}`}
+                href={result.downloadUrl}
                 download={result.filename}
                 className="inline-flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-lg text-base font-bold bg-indigo-600 text-white hover:bg-indigo-700 btn-lift shadow-sm transition"
               >
